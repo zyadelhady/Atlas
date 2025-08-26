@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 interface Message {
   text: string;
@@ -49,6 +51,32 @@ export default function Chat() {
     }
   };
 
+  const renderMessageContent = (text: string) => {
+    const parts = text.split(/(```[\s\S]*?```)/g);
+    return parts.map((part, index) => {
+      if (part.startsWith('```') && part.endsWith('```')) {
+        const code = part.slice(3, -3).trim();
+        const languageMatch = code.match(/^(\w+)\n/);
+        const language = languageMatch ? languageMatch[1] : 'python'; // Default to python
+        const codeContent = languageMatch ? code.substring(languageMatch[0].length) : code;
+
+        return (
+          <SyntaxHighlighter
+            key={index}
+            language={language}
+            style={tomorrow}
+            showLineNumbers
+            customStyle={{ borderRadius: '0.5rem', padding: '1em' }}
+          >
+            {codeContent}
+          </SyntaxHighlighter>
+        );
+      } else {
+        return <span key={index}>{part}</span>;
+      }
+    });
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gray-100">
       <div className="flex-grow p-6 overflow-auto">
@@ -63,7 +91,7 @@ export default function Chat() {
                     ? 'bg-blue-500 text-white'
                     : 'bg-white text-gray-800'
                 }`}>
-                {msg.text}
+                {renderMessageContent(msg.text)}
               </div>
             </div>
           ))}

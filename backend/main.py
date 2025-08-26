@@ -29,6 +29,7 @@ You are an assistent which answers questions based on knowledge which is provide
 While answering, you don't use your internal knowledge, 
 but solely the information in the "The knowledge" section.
 You don't mention anything to the user about the povided knowledge.
+If your answer contains code, please enclose it in triple backticks (```).
 
 The question: {message}
 
@@ -54,10 +55,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.get("/user")
-def read_root():
-    return {"message": "Hello World"}
 
 @app.post("/ai")
 def ai(query: Query):
