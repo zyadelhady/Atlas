@@ -1,7 +1,8 @@
 "use client";
-import { useState, FormEvent } from "react";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { tomorrow } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { useState, FormEvent, useEffect } from 'react';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { v4 as uuidv4 } from 'uuid';
 
 interface Message {
   text: string;
@@ -10,8 +11,39 @@ interface Message {
 
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let currentSessionId = localStorage.getItem('sessionId');
+    if (!currentSessionId) {
+      currentSessionId = uuidv4();
+      localStorage.setItem('sessionId', currentSessionId);
+    }
+    setSessionId(currentSessionId);
+
+    // Fetch history for this session
+    const fetchHistory = async () => {
+      try {
+        const response = await fetch(`http://localhost:8000/history/${currentSessionId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch history');
+        }
+        const historyData = await response.json();
+        const loadedMessages: Message[] = [];
+        historyData.forEach((entry: any) => {
+          loadedMessages.push({ text: entry.prompt, isUser: true });
+          loadedMessages.push({ text: entry.response, isUser: false });
+        });
+        setMessages(loadedMessages);
+      } catch (error) {
+        console.error('Error fetching history:', error);
+      }
+    };
+
+    fetchHistory();
+  }, []);
 
   const suggestionQuestions = [
     "How do I create a pandas DataFrame?",
@@ -26,20 +58,20 @@ export default function Chat() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || !sessionId) return;
 
     const userMessage: Message = { text: input, isUser: true };
     setMessages((prev) => [...prev, userMessage]);
-    setInput("");
+    setInput('');
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8000/ai", {
-        method: "POST",
+      const response = await fetch('http://localhost:8000/ai', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ query: input, history: messages }),
+        body: JSON.stringify({ query: input, history: messages, sessionId: sessionId }),
       });
 
       if (!response.ok) {

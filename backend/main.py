@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema.output_parser import StrOutputParser
@@ -8,6 +8,9 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse
+from sqlalchemy.orm import Session
+from database import SessionLocal, ChatHistory, create_db_and_tables
+from typing import Optional
 import os
 
 load_dotenv()
@@ -43,8 +46,13 @@ The knowledge: {knowledge}
 class Query(BaseModel):
     query: str
     history: list = []
+    sessionId: Optional[str] = None
 
 app = FastAPI()
+
+@app.on_event("startup")
+def on_startup():
+    create_db_and_tables()
 
 origins = [
     "http://localhost:3001",
@@ -58,8 +66,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 @app.post("/ai")
-def ai(query: Query):
+def ai(query: Query, db: Session = Depends(get_db)):
     results = chroma_db.similarity_search_with_relevance_scores(query.query, k=10)
 
     context_text = "\n\n---\n\n".join([doc.page_content for doc, _ in results])
@@ -77,7 +92,21 @@ def ai(query: Query):
     chain = llm
 
     async def generate():
+        full_response = ""
         for chunk in chain.stream(prompt):
+            full_response += chunk.content
             yield chunk.content
+        
+        # Store the conversation in the database after the full response is generated
+        if query.sessionId:
+            chat_entry = ChatHistory(session_id=query.sessionId, prompt=query.query, response=full_response)
+            db.add(chat_entry)
+            db.commit()
+            db.refresh(chat_entry)
 
     return StreamingResponse(generate())
+
+@app.get("/history/{session_id}")
+def get_history(session_id: str, db: Session = Depends(get_db)):
+    history = db.query(ChatHistory).filter(ChatHistory.session_id == session_id).all()
+    return history
