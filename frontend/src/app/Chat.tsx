@@ -71,7 +71,7 @@ export default function Chat() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ query: input, history: messages, sessionId: sessionId }),
+        body: JSON.stringify({ query: input, sessionId: sessionId }),
       });
 
       if (!response.ok) {

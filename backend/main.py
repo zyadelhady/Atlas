@@ -45,8 +45,7 @@ The knowledge: {knowledge}
 
 class Query(BaseModel):
     query: str
-    history: list = []
-    sessionId: Optional[str] = None
+    sessionId: str
 
 app = FastAPI()
 
@@ -79,12 +78,12 @@ def ai(query: Query, db: Session = Depends(get_db)):
 
     context_text = "\n\n---\n\n".join([doc.page_content for doc, _ in results])
     
+    # Retrieve history from database
     formatted_history = ""
-    for msg in query.history:
-        if msg["isUser"]:
-            formatted_history += "User: " + msg["text"] + "\n"
-        else:
-            formatted_history += "AI: " + msg["text"] + "\n"
+    chat_history_entries = db.query(ChatHistory).filter(ChatHistory.session_id == query.sessionId).order_by(ChatHistory.timestamp).all()
+    for entry in chat_history_entries:
+        formatted_history += "User: " + entry.prompt + "\n"
+        formatted_history += "AI: " + entry.response + "\n"
 
     prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
     prompt = prompt_template.format(knowledge=context_text, message=query.query, history=formatted_history)
@@ -98,11 +97,10 @@ def ai(query: Query, db: Session = Depends(get_db)):
             yield chunk.content
         
         # Store the conversation in the database after the full response is generated
-        if query.sessionId:
-            chat_entry = ChatHistory(session_id=query.sessionId, prompt=query.query, response=full_response)
-            db.add(chat_entry)
-            db.commit()
-            db.refresh(chat_entry)
+        chat_entry = ChatHistory(session_id=query.sessionId, prompt=query.query, response=full_response)
+        db.add(chat_entry)
+        db.commit()
+        db.refresh(chat_entry)
 
     return StreamingResponse(generate())
 
