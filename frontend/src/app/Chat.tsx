@@ -14,6 +14,17 @@ export default function Chat() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  const suggestionQuestions = [
+    "How do I create a pandas DataFrame?",
+    "What is a pandas Series?",
+    "How do I select data from a DataFrame?",
+    "How do I handle missing data in pandas?",
+  ];
+
+  const handleSuggestionClick = (question: string) => {
+    setInput(question);
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
@@ -86,7 +97,7 @@ export default function Chat() {
               key={index}
               className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}>
               <div
-                className={`px-4 py-2 rounded-lg max-w-xs lg:max-w-md ${ 
+                className={`px-4 py-2 rounded-lg max-w-md lg:max-w-2xl ${ 
                   msg.isUser
                     ? 'bg-blue-500 text-white'
                     : 'bg-white text-gray-800'
@@ -105,6 +116,17 @@ export default function Chat() {
         </div>
       </div>
       <div className="p-4 bg-white border-t">
+        <div className="mb-4 flex flex-wrap gap-2 justify-center">
+          {suggestionQuestions.map((question, index) => (
+            <button
+              key={index}
+              onClick={() => handleSuggestionClick(question)}
+              className="px-4 py-2 text-sm bg-gray-200 rounded-full hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
+            >
+              {question}
+            </button>
+          ))}
+        </div>
         <form onSubmit={handleSubmit} className="flex items-center">
           <input
             type="text"
