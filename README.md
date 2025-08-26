@@ -69,6 +69,7 @@ Create a `.env` file in the `backend/` directory with your Google API Key:
 ```
 # backend/.env
 GOOGLE_API_KEY=YOUR_GEMINI_API_KEY
+DATABASE_URL=postgresql://user:password@db:5432/mydatabase
 ```
 
 **Note on PostgreSQL Credentials:** The `docker-compose.yml` file already defines default PostgreSQL credentials (`user`, `password`, `mydatabase`). If you wish to change these, update the `db` service environment variables in `docker-compose.yml` and the `DATABASE_URL` in the `web` service accordingly.
@@ -88,23 +89,6 @@ This command will:
 - Start the FastAPI backend service.
 - Start the Next.js frontend service.
 
-### 4. Initial Data Ingestion
-
-Before asking questions, you need to ingest your documentation into ChromaDB. The project includes a script for this.
-
-First, ensure the backend container is running:
-
-```bash
-docker-compose ps
-```
-
-Find the name of your backend service (e.g., `docsai-web-1`). Then, run the ingestion script inside the backend container:
-
-```bash
-docker-compose exec web python ingest.py
-```
-
-This will process the `.txt` files in `backend/data/` and store their embeddings in `backend/db/chroma.sqlite3`.
 
 ## Usage
 
@@ -130,8 +114,8 @@ Once all services are up and data is ingested:
 ## Development Notes
 
 ### Why I Choose This Project
-I Liked this idea because i think it's something i could use daily with my work as i would create agent for something i am learning and it will help me understand it
 
+I Liked this idea because i think it's something i could use daily with my work as i would create agent for something i am learning and it will help me understand it
 
 ### Time Spent and Future Improvements
 
