@@ -8,6 +8,12 @@ DATA_DIR = "data"
 DB_DIR = "db"
 
 def run_ingestion():
+    # Check if the ChromaDB directory exists and is not empty
+    if os.path.exists(DB_DIR) and os.listdir(DB_DIR):
+        print("ChromaDB directory already contains data. Skipping ingestion.")
+        return
+
+    print("ChromaDB directory is empty or does not exist. Running ingestion...")
     loader = DirectoryLoader(DATA_DIR, glob="*.txt")
 
     documents = loader.load()
@@ -22,6 +28,7 @@ def run_ingestion():
         embeddings,
         persist_directory=DB_DIR
     )
+    db.persist()
     print("INGESTION DONE")
 
 
