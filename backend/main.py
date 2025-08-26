@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from database import SessionLocal, ChatHistory, create_db_and_tables
+from ingest import run_ingestion
 from typing import Optional
 import os
 
@@ -52,6 +53,7 @@ app = FastAPI()
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
+    run_ingestion()
 
 origins = [
     "http://localhost:3001",

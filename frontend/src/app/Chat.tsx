@@ -1,5 +1,5 @@
 "use client";
-import { useState, FormEvent, useEffect } from 'react';
+import { useState, FormEvent, useEffect, useRef } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { v4 as uuidv4 } from 'uuid';
@@ -14,6 +14,11 @@ export default function Chat() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   useEffect(() => {
     let currentSessionId = localStorage.getItem('sessionId');
@@ -172,6 +177,7 @@ export default function Chat() {
               </div>
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
       </div>
       <div className="p-4 bg-white border-t">
