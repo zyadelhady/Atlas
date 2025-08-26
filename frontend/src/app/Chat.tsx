@@ -31,7 +31,7 @@ export default function Chat() {
     // Fetch history for this session
     const fetchHistory = async () => {
       try {
-        const response = await fetch(`http://localhost:8000/history/${currentSessionId}`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/history/${currentSessionId}`);
         if (!response.ok) {
           throw new Error('Failed to fetch history');
         }
@@ -71,7 +71,7 @@ export default function Chat() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/ai', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/ai`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
