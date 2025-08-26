@@ -7,6 +7,7 @@ from langchain.embeddings import HuggingFaceEmbeddings
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import StreamingResponse
 import os
 
 load_dotenv()
@@ -70,14 +71,13 @@ def ai(query: Query):
         else:
             formatted_history += "AI: " + msg["text"] + "\n"
 
-    print("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&" + "\n")
-    print(formatted_history + "\n")
-    print("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&" + "\n")
-
     prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
     prompt = prompt_template.format(knowledge=context_text, message=query.query, history=formatted_history)
 
-    chain = llm | StrOutputParser()
-    response = chain.invoke(prompt)
+    chain = llm
 
-    return {"response": response}
+    async def generate():
+        for chunk in chain.stream(prompt):
+            yield chunk.content
+
+    return StreamingResponse(generate())

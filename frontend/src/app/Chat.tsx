@@ -1,8 +1,7 @@
-'use client';
-
-import { useState, FormEvent } from 'react';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+"use client";
+import { useState, FormEvent } from "react";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { tomorrow } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 interface Message {
   text: string;
@@ -11,7 +10,7 @@ interface Message {
 
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const suggestionQuestions = [
@@ -31,29 +30,53 @@ export default function Chat() {
 
     const userMessage: Message = { text: input, isUser: true };
     setMessages((prev) => [...prev, userMessage]);
-    setInput('');
+    setInput("");
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/ai', {
-        method: 'POST',
+      const response = await fetch("http://localhost:8000/ai", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ query: input, history: messages }),
       });
 
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        throw new Error("Network response was not ok");
       }
 
-      const data = await response.json();
-      const aiMessage: Message = { text: data.response, isUser: false };
-      setMessages((prev) => [...prev, aiMessage]);
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("Failed to get reader from response body");
+      }
+
+      let receivedText = "";
+      const decoder = new TextDecoder();
+      setMessages((prev) => [...prev, { text: "", isUser: false }]); // Add an empty message for AI response
+
+      let firstChunk = true;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (firstChunk) {
+          setIsLoading(false); // Hide typing indicator on first chunk
+          firstChunk = false;
+        }
+        receivedText += decoder.decode(value, { stream: true });
+        setMessages((prev) => {
+          const newMessages = [...prev];
+          newMessages[newMessages.length - 1] = {
+            ...newMessages[newMessages.length - 1],
+            text: receivedText,
+          };
+          return newMessages;
+        });
+      }
     } catch (error) {
-      console.error('There was a problem with the fetch operation:', error);
+      console.error("There was a problem with the fetch operation:", error);
       const errorMessage: Message = {
-        text: 'Sorry, something went wrong. Please try again.',
+        text: "Sorry, something went wrong. Please try again.",
         isUser: false,
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -65,11 +88,13 @@ export default function Chat() {
   const renderMessageContent = (text: string) => {
     const parts = text.split(/(```[\s\S]*?```)/g);
     return parts.map((part, index) => {
-      if (part.startsWith('```') && part.endsWith('```')) {
+      if (part.startsWith("```") && part.endsWith("```")) {
         const code = part.slice(3, -3).trim();
         const languageMatch = code.match(/^(\w+)\n/);
-        const language = languageMatch ? languageMatch[1] : 'python'; // Default to python
-        const codeContent = languageMatch ? code.substring(languageMatch[0].length) : code;
+        const language = languageMatch ? languageMatch[1] : "python"; // Default to python
+        const codeContent = languageMatch
+          ? code.substring(languageMatch[0].length)
+          : code;
 
         return (
           <SyntaxHighlighter
@@ -77,7 +102,7 @@ export default function Chat() {
             language={language}
             style={tomorrow}
             showLineNumbers
-            customStyle={{ borderRadius: '0.5rem', padding: '1em' }}
+            customStyle={{ borderRadius: "0.5rem", padding: "1em" }}
           >
             {codeContent}
           </SyntaxHighlighter>
@@ -95,13 +120,15 @@ export default function Chat() {
           {messages.map((msg, index) => (
             <div
               key={index}
-              className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}>
+              className={`flex ${msg.isUser ? "justify-end" : "justify-start"}`}
+            >
               <div
-                className={`px-4 py-2 rounded-lg max-w-md lg:max-w-2xl ${ 
+                className={`px-4 py-2 rounded-lg max-w-md lg:max-w-2xl ${
                   msg.isUser
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-white text-gray-800'
-                }`}>
+                    ? "bg-blue-500 text-white"
+                    : "bg-white text-gray-800"
+                }`}
+              >
                 {renderMessageContent(msg.text)}
               </div>
             </div>
@@ -138,7 +165,8 @@ export default function Chat() {
           <button
             type="submit"
             className="ml-4 px-6 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-blue-300"
-            disabled={isLoading}>
+            disabled={isLoading}
+          >
             Send
           </button>
         </form>
