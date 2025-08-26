@@ -41,6 +41,7 @@ The knowledge: {knowledge}
 
 class Query(BaseModel):
     query: str
+    history: list = []
 
 app = FastAPI()
 
@@ -60,12 +61,21 @@ app.add_middleware(
 def ai(query: Query):
     results = chroma_db.similarity_search_with_relevance_scores(query.query, k=10)
 
-    if len(results) == 0 or results[0][1] < 0.1:
-        return {"response": "Unable to find matching results."}
+    context_text = "\n\n---\n\n".join([doc.page_content for doc, _ in results])
+    
+    formatted_history = ""
+    for msg in query.history:
+        if msg["isUser"]:
+            formatted_history += "User: " + msg["text"] + "\n"
+        else:
+            formatted_history += "AI: " + msg["text"] + "\n"
 
-    context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])
+    print("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&" + "\n")
+    print(formatted_history + "\n")
+    print("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&" + "\n")
+
     prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
-    prompt = prompt_template.format(knowledge=context_text, message=query.query,history="")
+    prompt = prompt_template.format(knowledge=context_text, message=query.query, history=formatted_history)
 
     chain = llm | StrOutputParser()
     response = chain.invoke(prompt)

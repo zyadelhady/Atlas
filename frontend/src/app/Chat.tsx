@@ -40,7 +40,7 @@ export default function Chat() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ query: input }),
+        body: JSON.stringify({ query: input, history: messages }),
       });
 
       if (!response.ok) {
