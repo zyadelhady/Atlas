@@ -11,7 +11,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+psycopg://admin:oc2RgZlZxo2vQuPNq5NGKV81fSFJrvHC@dpg-d2n2b22dbo4c73dbp21g-a.oregon-postgres.render.com/staging_auuo
+      DATABASE_URL: postgresql+psycopg://user:password@db:5432/mydatabase
 
   frontend:
     build:

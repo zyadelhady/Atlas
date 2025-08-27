@@ -1,8 +1,8 @@
 "use client";
-import { useState, FormEvent, useEffect, useRef } from 'react';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { v4 as uuidv4 } from 'uuid';
+import { useState, FormEvent, useEffect, useRef } from "react";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { tomorrow } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { v4 as uuidv4 } from "uuid";
 
 interface Message {
   text: string;
@@ -11,7 +11,7 @@ interface Message {
 
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -21,19 +21,21 @@ export default function Chat() {
   }, [messages]);
 
   useEffect(() => {
-    let currentSessionId = localStorage.getItem('sessionId');
+    let currentSessionId = localStorage.getItem("sessionId");
     if (!currentSessionId) {
       currentSessionId = uuidv4();
-      localStorage.setItem('sessionId', currentSessionId);
+      localStorage.setItem("sessionId", currentSessionId);
     }
     setSessionId(currentSessionId);
 
     // Fetch history for this session
     const fetchHistory = async () => {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/history/${currentSessionId}`);
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/history/${currentSessionId}`,
+        );
         if (!response.ok) {
-          throw new Error('Failed to fetch history');
+          throw new Error("Failed to fetch history");
         }
         const historyData = await response.json();
         const loadedMessages: Message[] = [];
@@ -43,7 +45,7 @@ export default function Chat() {
         });
         setMessages(loadedMessages);
       } catch (error) {
-        console.error('Error fetching history:', error);
+        console.error("Error fetching history:", error);
       }
     };
 
@@ -67,17 +69,20 @@ export default function Chat() {
 
     const userMessage: Message = { text: input, isUser: true };
     setMessages((prev) => [...prev, userMessage]);
-    setInput('');
+    setInput("");
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/ai`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/ai`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ query: input, sessionId: sessionId }),
         },
-        body: JSON.stringify({ query: input, sessionId: sessionId }),
-      });
+      );
 
       if (!response.ok) {
         throw new Error("Network response was not ok");
@@ -160,11 +165,10 @@ export default function Chat() {
               className={`flex ${msg.isUser ? "justify-end" : "justify-start"}`}
             >
               <div
-                className={`px-4 py-2 rounded-lg max-w-md lg:max-w-2xl ${
-                  msg.isUser
+                className={`px-4 py-2 rounded-lg max-w-md lg:max-w-2xl ${msg.isUser
                     ? "bg-blue-500 text-white"
                     : "bg-white text-gray-800"
-                }`}
+                  }`}
               >
                 {renderMessageContent(msg.text)}
               </div>
