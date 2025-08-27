@@ -1,22 +1,21 @@
 from fastapi import FastAPI, Depends
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import ChatPromptTemplate
-from langchain.schema.output_parser import StrOutputParser
-from langchain_community.vectorstores import Chroma
+
 from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_postgres import PGVectorStore, PGEngine
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse
-from sqlalchemy.orm import Session
-from database import SessionLocal, ChatHistory, create_db_and_tables
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from database import ChatHistory, create_db_and_tables, get_session
 from ingest import run_ingestion
-from typing import Optional
+
 import os
 
 load_dotenv()
-
-CHROMA_DIR = "db"
 
 llm = ChatGoogleGenerativeAI(
     model="gemini-1.5-flash",
@@ -27,7 +26,23 @@ llm = ChatGoogleGenerativeAI(
 )
 
 embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-chroma_db = Chroma(persist_directory=CHROMA_DIR, embedding_function=embeddings)
+
+CONNECTION_STRING = os.environ.get("DATABASE_URL")
+print(f"CONNECTION_STRING in main.py: {CONNECTION_STRING}")
+TABLE_NAME = "my_documents"
+
+pg_engine = PGEngine.from_connection_string(url=CONNECTION_STRING)
+
+# pg_engine.init_vectorstore_table(
+#     table_name=TABLE_NAME,
+#     vector_size=384,
+# )
+
+vector_store =  PGVectorStore.create_sync(
+    table_name=TABLE_NAME,
+    embedding_service=embeddings,
+    engine=pg_engine,
+)
 
 PROMPT_TEMPLATE = """
 You are an assistent which answers questions based on knowledge which is provided to you.
@@ -50,13 +65,14 @@ class Query(BaseModel):
 
 app = FastAPI()
 
-@app.on_event("startup")
-def on_startup():
-    create_db_and_tables()
-    run_ingestion()
+# @app.on_event("startup")
+# async def on_startup():
+    # await create_db_and_tables()
+    # run_ingestion()
 
 origins = [
     "http://localhost:3001",
+    "*",
 ]
 
 app.add_middleware(
@@ -67,22 +83,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+
 
 @app.post("/ai")
-def ai(query: Query, db: Session = Depends(get_db)):
-    results = chroma_db.similarity_search_with_relevance_scores(query.query, k=10)
+async def ai(query: Query, db: AsyncSession = Depends(get_session)):
+    results = await vector_store.asimilarity_search_with_relevance_scores(query.query, k=10)
 
     context_text = "\n\n---\n\n".join([doc.page_content for doc, _ in results])
     
     # Retrieve history from database
     formatted_history = ""
-    chat_history_entries = db.query(ChatHistory).filter(ChatHistory.session_id == query.sessionId).order_by(ChatHistory.timestamp).all()
+    chat_history_entries = (await db.execute(select(ChatHistory).filter(ChatHistory.session_id == query.sessionId).order_by(ChatHistory.timestamp))).scalars().all()
     for entry in chat_history_entries:
         formatted_history += "User: " + entry.prompt + "\n"
         formatted_history += "AI: " + entry.response + "\n"
@@ -98,15 +109,14 @@ def ai(query: Query, db: Session = Depends(get_db)):
             full_response += chunk.content
             yield chunk.content
         
-        # Store the conversation in the database after the full response is generated
         chat_entry = ChatHistory(session_id=query.sessionId, prompt=query.query, response=full_response)
         db.add(chat_entry)
-        db.commit()
-        db.refresh(chat_entry)
+        await db.commit()
+        await db.refresh(chat_entry)
 
     return StreamingResponse(generate())
 
 @app.get("/history/{session_id}")
-def get_history(session_id: str, db: Session = Depends(get_db)):
-    history = db.query(ChatHistory).filter(ChatHistory.session_id == session_id).all()
+async def get_history(session_id: str, db: AsyncSession = Depends(get_session)):
+    history = (await db.execute(select(ChatHistory).filter(ChatHistory.session_id == session_id))).scalars().all()
     return history

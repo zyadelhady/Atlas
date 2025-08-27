@@ -1,13 +1,13 @@
 # DocsAI - Documentation AI Chatbot
 
-DocsAI is an AI-powered chatbot designed to answer questions based on your documentation. It leverages Google's Gemini LLM, LangChain for RAG (Retrieval Augmented Generation), ChromaDB for vector storage, FastAPI for the backend API, and Next.js for a responsive chat interface.
+DocsAI is an AI-powered chatbot designed to answer questions based on your documentation. It leverages Google's Gemini LLM, LangChain for RAG (Retrieval Augmented Generation), PostgreSQL with pgvector for vector storage, FastAPI for the backend API, and Next.js for a responsive chat interface.
 
 ## Features
 
 - **FastAPI Backend:** A Python backend built with FastAPI to serve AI responses.
 - **Gemini LLM Integration:** Utilizes Google's Gemini model for generating intelligent responses.
-- **LangChain RAG:** Implements Retrieval Augmented Generation using LangChain to fetch relevant information from your documents stored in ChromaDB.
-- **ChromaDB Vector Store:** Efficiently stores and retrieves document embeddings.
+- **LangChain RAG:** Implements Retrieval Augmented Generation using LangChain to fetch relevant information from your documents stored in a PostgreSQL database.
+- **PostgreSQL with pgvector for vector storage:** Efficiently stores and retrieves document embeddings, which improves memory usage.
 - **PostgreSQL Chat History:** Stores all prompts and AI responses in a PostgreSQL database, organized by chat session.
 - **Streaming Responses:** Provides a smooth user experience by streaming AI responses chunk by chunk to the frontend.
 - **Next.js Frontend:** A modern chat interface built with React, TypeScript, and Tailwind CSS.
@@ -16,7 +16,7 @@ DocsAI is an AI-powered chatbot designed to answer questions based on your docum
   - Syntax highlighting for code snippets in AI responses.
   - Pre-defined question suggestions for quick interaction.
   - Session-based history management, allowing users to continue conversations.
-- **Docker Compose Orchestration:** Easily set up and run the entire application stack (backend, frontend, database) using Docker.
+- **Docker Compose Orchestration:** Easily set up and run the entire application stack (backend, frontend) using Docker.
 
 ## Technologies Used
 
@@ -26,9 +26,7 @@ DocsAI is an AI-powered chatbot designed to answer questions based on your docum
 - FastAPI
 - LangChain
 - langchain-google-genai
-- ChromaDB
 - SQLAlchemy
-- psycopg2-binary
 - python-dotenv
 
 **Frontend:**
@@ -41,7 +39,7 @@ DocsAI is an AI-powered chatbot designed to answer questions based on your docum
 
 **Database:**
 
-- PostgreSQL
+- PostgreSQL with pgvector
 
 **Orchestration:**
 
@@ -54,6 +52,7 @@ DocsAI is an AI-powered chatbot designed to answer questions based on your docum
 
 - [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) installed on your system.
 - A Google API Key for Gemini (get one from [Google AI Studio](https://aistudio.google.com/)).
+- A cloud PostgreSQL database with the pgvector extension enabled.
 
 ### 1. Clone the Repository
 
@@ -64,15 +63,15 @@ cd atlas
 
 ### 2. Configure Environment Variables
 
-Create a `.env` file in the `backend/` directory with your Google API Key:
+Create a `.env` file in the `backend/` directory with your Google API Key and your cloud PostgreSQL database URL:
 
 ```
 # backend/.env
 GOOGLE_API_KEY=YOUR_GEMINI_API_KEY
-DATABASE_URL=postgresql://user:password@db:5432/mydatabase
+DATABASE_URL=YOUR_CLOUD_POSTGRESQL_DATABASE_URL
 ```
 
-**Note on PostgreSQL Credentials:** The `docker-compose.yml` file already defines default PostgreSQL credentials (`user`, `password`, `mydatabase`). If you wish to change these, update the `db` service environment variables in `docker-compose.yml` and the `DATABASE_URL` in the `web` service accordingly.
+You will also need to update the `DATABASE_URL` in the `docker-compose.yml` file for the `web` service.
 
 ### 3. Build and Run with Docker Compose
 
@@ -85,7 +84,6 @@ docker-compose up --build -d
 This command will:
 
 - Build the Docker images for the backend and frontend.
-- Start the PostgreSQL database service.
 - Start the FastAPI backend service.
 - Start the Next.js frontend service.
 

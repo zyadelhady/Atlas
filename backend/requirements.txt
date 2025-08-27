@@ -1,13 +1,12 @@
 fastapi
 uvicorn
-psycopg2-binary
 langchain-google-genai
 python-dotenv
-chromadb
 langchain
 unstructured
 langchain-community
 google-generativeai
 libmagic
-sentence-transformers
 SQLAlchemy
+langchain-postgres
+psycopg[binary,pool]==3.2.9

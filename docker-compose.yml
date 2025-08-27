@@ -8,9 +8,10 @@ services:
     volumes:
       - ./backend:/app
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://user:password@db:5432/mydatabase
+      DATABASE_URL: postgresql+psycopg://admin:oc2RgZlZxo2vQuPNq5NGKV81fSFJrvHC@dpg-d2n2b22dbo4c73dbp21g-a.oregon-postgres.render.com/staging_auuo
 
   frontend:
     build:
@@ -24,13 +25,18 @@ services:
       - web
 
   db:
-    image: postgres:13
+    image: pgvector/pgvector:pg16
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: mydatabase
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d mydatabase"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:
