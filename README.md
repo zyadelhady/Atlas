@@ -1,6 +1,6 @@
-# DocsAI - Documentation AI Chatbot
+# Atlas - Documentation AI Chatbot
 
-DocsAI is an AI-powered chatbot designed to answer questions based on your documentation. It leverages Google's Gemini LLM, LangChain for RAG (Retrieval Augmented Generation), PostgreSQL with pgvector for vector storage, FastAPI for the backend API, and Next.js for a responsive chat interface.
+Atlas is an AI-powered chatbot designed to answer questions based on your documentation. It leverages Google's Gemini LLM, LangChain for RAG (Retrieval Augmented Generation), PostgreSQL with pgvector for vector storage, FastAPI for the backend API, and Next.js for a responsive chat interface.
 
 ## Features
 
