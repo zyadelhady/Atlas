@@ -7,3 +7,5 @@ google-generativeai
 SQLAlchemy
 langchain-postgres
 psycopg[binary,pool]==3.2.9
+unstructured
+langchain_community
