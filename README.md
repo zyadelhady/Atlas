@@ -52,7 +52,6 @@ DocsAI is an AI-powered chatbot designed to answer questions based on your docum
 
 - [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) installed on your system.
 - A Google API Key for Gemini (get one from [Google AI Studio](https://aistudio.google.com/)).
-- A cloud PostgreSQL database with the pgvector extension enabled.
 
 ### 1. Clone the Repository
 
@@ -63,15 +62,14 @@ cd atlas
 
 ### 2. Configure Environment Variables
 
-Create a `.env` file in the `backend/` directory with your Google API Key and your cloud PostgreSQL database URL:
+Create a `.env` file in the `backend/` directory with your Google API Key:
 
 ```
 # backend/.env
 GOOGLE_API_KEY=YOUR_GEMINI_API_KEY
-DATABASE_URL=YOUR_CLOUD_POSTGRESQL_DATABASE_URL
 ```
 
-You will also need to update the `DATABASE_URL` in the `docker-compose.yml` file for the `web` service.
+The `DATABASE_URL` is already configured in the `docker-compose.yml` file to use the local PostgreSQL database service. You don't need to change it.
 
 ### 3. Build and Run with Docker Compose
 
@@ -86,6 +84,19 @@ This command will:
 - Build the Docker images for the backend and frontend.
 - Start the FastAPI backend service.
 - Start the Next.js frontend service.
+- Start the PostgreSQL database service.
+
+### 4. Ingest Your Documents
+
+Place your documentation files (in `.txt` format) in the `backend/data` directory.
+
+Then, run the ingestion script:
+
+```bash
+python backend/ingest.py
+```
+
+This will load your documents, create embeddings, and store them in the PostgreSQL database.
 
 
 ## Usage

@@ -3,10 +3,7 @@ uvicorn
 langchain-google-genai
 python-dotenv
 langchain
-unstructured
-langchain-community
 google-generativeai
-libmagic
 SQLAlchemy
 langchain-postgres
 psycopg[binary,pool]==3.2.9
