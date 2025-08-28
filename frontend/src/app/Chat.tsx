@@ -156,7 +156,7 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100">
+    <div className="flex flex-col h-screen bg-gray-800 text-white">
       <div className="flex-grow p-6 overflow-auto">
         <div className="flex flex-col space-y-4">
           {messages.map((msg, index) => (
@@ -166,8 +166,8 @@ export default function Chat() {
             >
               <div
                 className={`px-4 py-2 rounded-lg max-w-md lg:max-w-2xl ${msg.isUser
-                    ? "bg-blue-500 text-white"
-                    : "bg-white text-gray-800"
+                    ? "bg-blue-700 text-white"
+                    : "bg-gray-700 text-gray-200"
                   }`}
               >
                 {renderMessageContent(msg.text)}
@@ -176,7 +176,7 @@ export default function Chat() {
           ))}
           {isLoading && (
             <div className="flex justify-start">
-              <div className="px-4 py-2 rounded-lg bg-white text-gray-800">
+              <div className="px-4 py-2 rounded-lg bg-gray-700 text-gray-200">
                 Typing...
               </div>
             </div>
@@ -184,13 +184,13 @@ export default function Chat() {
           <div ref={messagesEndRef} />
         </div>
       </div>
-      <div className="p-4 bg-white border-t">
+      <div className="p-4 bg-gray-900 border-t border-gray-700">
         <div className="mb-4 flex flex-wrap gap-2 justify-center">
           {suggestionQuestions.map((question, index) => (
             <button
               key={index}
               onClick={() => handleSuggestionClick(question)}
-              className="px-4 py-2 text-sm bg-gray-200 rounded-full hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
+              className="px-4 py-2 text-sm bg-gray-700 rounded-full hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
             >
               {question}
             </button>
@@ -201,12 +201,12 @@ export default function Chat() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            className="flex-grow px-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-grow px-4 py-2 bg-gray-800 border border-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
             placeholder="Type your message..."
           />
           <button
             type="submit"
-            className="ml-4 px-6 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-blue-300"
+            className="ml-4 px-6 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-blue-800"
             disabled={isLoading}
           >
             Send

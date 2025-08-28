@@ -1,6 +1,6 @@
 from langchain.document_loaders import DirectoryLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_postgres import PGVectorStore, PGEngine
 from dotenv import load_dotenv
 import os
@@ -8,10 +8,12 @@ import os
 load_dotenv()
 
 DATA_DIR = "data"
-TABLE_NAME = "my_documents"
+TABLE_NAME = "docs"
+
+# IMPORTANT: If you change the embedding model, you must delete the old table in the database.
+# You can do this by connecting to the database and running `DROP TABLE my_documents;`
 
 CONNECTION_STRING = os.environ.get("DATABASE_URL")
-print(f"CONNECTION_STRING in ingest.py: {CONNECTION_STRING}")
 
 def run_ingestion():
     print("Running ingestion...")
@@ -22,7 +24,7 @@ def run_ingestion():
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     texts = text_splitter.split_documents(documents)
 
-    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
 
     pg_engine = PGEngine.from_connection_string(url=CONNECTION_STRING)
 
@@ -33,5 +35,8 @@ def run_ingestion():
         engine=pg_engine,
     )
     print("INGESTION DONE")
+
+if __name__ == "__main__":
+    run_ingestion()
 
 
