@@ -9,11 +9,15 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     libpq5 \
     gcc \
+    libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --upgrade pip 
 
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Download required NLTK data
+RUN python -c "import nltk; nltk.download('punkt'); nltk.download('averaged_perceptron_tagger')"
 
 COPY . .
 

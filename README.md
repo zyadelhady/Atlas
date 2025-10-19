@@ -1,12 +1,14 @@
 # Atlas - Documentation AI Chatbot
 
-Atlas is an AI-powered chatbot designed to answer questions based on your documentation. It leverages Google's Gemini LLM, LangChain for RAG (Retrieval Augmented Generation), PostgreSQL with pgvector for vector storage, FastAPI for the backend API, and Next.js for a responsive chat interface.
+Atlas is an AI-powered chatbot designed to answer questions based on your documentation. It leverages Ollama for local LLM inference, LangChain for RAG (Retrieval Augmented Generation), PostgreSQL with pgvector for vector storage, FastAPI for the backend API, and Next.js for a responsive chat interface.
 
 ## Features
 
 - **FastAPI Backend:** A Python backend built with FastAPI to serve AI responses.
-- **Gemini LLM Integration:** Utilizes Google's Gemini model for generating intelligent responses.
+- **Ollama Integration:** Uses Ollama for local LLM inference with support for various open-source models (llama3.2, mistral, etc.).
 - **LangChain RAG:** Implements Retrieval Augmented Generation using LangChain to fetch relevant information from your documents stored in a PostgreSQL database.
+- **Hybrid Search:** Combines semantic (vector) and keyword (full-text) search for improved retrieval accuracy.
+- **AI-Powered Query Preprocessing:** Automatically improves user queries before retrieval.
 - **PostgreSQL with pgvector for vector storage:** Efficiently stores and retrieves document embeddings, which improves memory usage.
 - **PostgreSQL Chat History:** Stores all prompts and AI responses in a PostgreSQL database, organized by chat session.
 - **Streaming Responses:** Provides a smooth user experience by streaming AI responses chunk by chunk to the frontend.
@@ -16,7 +18,7 @@ Atlas is an AI-powered chatbot designed to answer questions based on your docume
   - Syntax highlighting for code snippets in AI responses.
   - Pre-defined question suggestions for quick interaction.
   - Session-based history management, allowing users to continue conversations.
-- **Docker Compose Orchestration:** Easily set up and run the entire application stack (backend, frontend) using Docker.
+- **Docker Compose Orchestration:** Easily set up and run the entire application stack (backend, frontend, Ollama, database) using Docker.
 
 ## Technologies Used
 
@@ -25,7 +27,7 @@ Atlas is an AI-powered chatbot designed to answer questions based on your docume
 - Python
 - FastAPI
 - LangChain
-- langchain-google-genai
+- langchain-community (for Ollama integration)
 - SQLAlchemy
 - python-dotenv
 
@@ -41,6 +43,10 @@ Atlas is an AI-powered chatbot designed to answer questions based on your docume
 
 - PostgreSQL with pgvector
 
+**LLM:**
+
+- Ollama (local LLM inference)
+
 **Orchestration:**
 
 - Docker
@@ -51,7 +57,6 @@ Atlas is an AI-powered chatbot designed to answer questions based on your docume
 ### Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) installed on your system.
-- A Google API Key for Gemini (get one from [Google AI Studio](https://aistudio.google.com/)).
 
 ### 1. Clone the Repository
 
@@ -60,16 +65,19 @@ git clone https://github.com/zyadelhady/atlas
 cd atlas
 ```
 
-### 2. Configure Environment Variables
+### 2. Configure Environment Variables (Optional)
 
-Create a `.env` file in the `backend/` directory with your Google API Key:
+The project uses default environment variables that work with Docker Compose. If you want to customize settings, create a `.env` file in the root directory based on `.env.example`:
 
+```bash
+cp .env.example .env
 ```
-# backend/.env
-GOOGLE_API_KEY=YOUR_GEMINI_API_KEY
-```
 
-The `DATABASE_URL` is already configured in the `docker-compose.yml` file to use the local PostgreSQL database service. You don't need to change it.
+Default configuration:
+- **DATABASE_URL:** `postgresql+psycopg://user:password@db:5432/mydatabase`
+- **OLLAMA_BASE_URL:** `http://ollama:11434`
+- **OLLAMA_MODEL:** `llama3.2` (for chat responses)
+- **OLLAMA_EMBEDDING_MODEL:** `nomic-embed-text` (for embeddings)
 
 ### 3. Build and Run with Docker Compose
 
@@ -82,21 +90,60 @@ docker-compose up --build -d
 This command will:
 
 - Build the Docker images for the backend and frontend.
+- Start the Ollama service for local LLM inference.
+- Start the PostgreSQL database service with pgvector extension.
 - Start the FastAPI backend service.
 - Start the Next.js frontend service.
-- Start the PostgreSQL database service.
 
-### 4. Ingest Your Documents
+### 4. Pull Ollama Models
+
+After the services start, you need to pull the required Ollama models:
+
+```bash
+# Pull the chat model (llama3.2 or any model you prefer)
+docker exec -it atlas-ollama-1 ollama pull llama3.2
+
+# Pull the embedding model
+docker exec -it atlas-ollama-1 ollama pull nomic-embed-text
+```
+
+**Note:** The first pull will take some time depending on your internet connection. Model sizes:
+- `llama3.2`: ~2GB
+- `nomic-embed-text`: ~274MB
+
+**Alternative models you can use:**
+- Chat models: `mistral`, `llama2`, `codellama`, `phi3`, etc.
+- Embedding models: `all-minilm`, `mxbai-embed-large`, etc.
+
+If you change models, update the `.env` file accordingly.
+
+### 5. Ingest Your Documents
 
 Place your documentation files (in `.txt` format) in the `backend/data` directory.
 
-Then, run the ingestion script:
+Then, run the ingestion script inside the backend container:
 
 ```bash
-python backend/ingest.py
+docker exec -it atlas-web-1 python ingest.py
 ```
 
-This will load your documents, create embeddings, and store them in the PostgreSQL database.
+This will load your documents, create embeddings using Ollama, and store them in the PostgreSQL database.
+
+**Important:** If you change the embedding model after initial ingestion, you must drop the existing table:
+
+```bash
+# Connect to the database
+docker exec -it atlas-db-1 psql -U user -d mydatabase
+
+# Drop the table
+DROP TABLE docs;
+
+# Exit
+\q
+
+# Re-run ingestion
+docker exec -it atlas-web-1 python ingest.py
+```
 
 
 ## Usage
@@ -110,15 +157,16 @@ Once all services are up and data is ingested:
   - Observe AI responses streaming in real-time with code highlighting.
 
 - **Backend API Endpoints:**
-  - **AI Chat Endpoint (POST):** `http://localhost:8000/ai`
+  - **AI Chat Endpoint (POST):** `http://localhost:8001/ai`
     - **Method:** `POST`
     - **Headers:** `Content-Type: application/json`
     - **Body:** `{"query": "Your question", "sessionId": "your-unique-session-id"}`
     - **Response:** Streams the AI's answer.
-  - **Chat History Endpoint (GET):** `http://localhost:8000/history/{session_id}`
+  - **Chat History Endpoint (GET):** `http://localhost:8001/history/{session_id}`
     - **Method:** `GET`
     - **Path Parameter:** Replace `{session_id}` with the actual session ID.
     - **Response:** Returns a JSON array of chat history entries for that session.
+  - **API Documentation (Swagger UI):** `http://localhost:8001/docs`
 
 ## Development Notes
 

@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from langchain_community.llms import Ollama
+from langchain_community.embeddings import OllamaEmbeddings
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema import Document
 import asyncio
@@ -18,22 +19,27 @@ import os
 
 load_dotenv()
 
-llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash",
+# Ollama configuration - using service name from docker-compose
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://ollama:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
+OLLAMA_EMBEDDING_MODEL = os.environ.get("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text")
+
+llm = Ollama(
+    base_url=OLLAMA_BASE_URL,
+    model=OLLAMA_MODEL,
     temperature=0,
-    max_tokens=None,
-    timeout=None,
-    max_retries=2,
 )
 
-
-embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+embeddings = OllamaEmbeddings(
+    base_url=OLLAMA_BASE_URL,
+    model=OLLAMA_EMBEDDING_MODEL,
+)
 
 CONNECTION_STRING = os.environ.get("DATABASE_URL")
 TABLE_NAME = "docs"
 
 # Configuration for retrieval
-RELEVANCE_SCORE_THRESHOLD = 0.7  # Only use docs with similarity > 0.7
+RELEVANCE_SCORE_THRESHOLD = 0.5  # Only use docs with similarity > 0.5 (lowered from 0.7 for better recall)
 SEMANTIC_SEARCH_K = 10  # Number of docs to retrieve via semantic search
 KEYWORD_SEARCH_K = 5    # Number of docs to retrieve via keyword search
 
@@ -51,32 +57,39 @@ vector_store =  PGVectorStore.create_sync(
 )
 
 PROMPT_TEMPLATE = """
-You are an assistant that answers questions using the "Knowledge" section as the source of truth. 
-You have three response modes depending on the type of user input:
+You are a documentation assistant. You MUST follow these rules strictly:
 
-1. Knowledge Mode:
-   - For factual questions, explanations, or definitions: ONLY use what is in the Knowledge section.
-   - If the Knowledge does not contain the answer, respond with: "I don’t know based on the provided information."
+CRITICAL RULES:
+1. If the Knowledge section below contains relevant information, you MUST use ONLY that information to answer.
+2. NEVER use your general knowledge or training data to answer technical questions.
+3. If the Knowledge section is empty or says "No relevant documentation found", respond EXACTLY with: "I don't have information about that in the documentation."
+4. NEVER start your response with "Social Mode:", "Knowledge Mode:", or "Code Mode:" - just answer directly.
 
-2. Code Mode:
-   - You are allowed to generate new code examples even if they are not in the Knowledge.
-   - Generated code must be correct, relevant, and consistent with the Knowledge context.
-   - Always enclose code in triple backticks and specify the language (e.g., ```python).
+RESPONSE GUIDELINES:
 
-3. Social Mode:
-   - For greetings, thanks, compliments, or casual small talk, reply politely and naturally.
-   - Keep responses short, friendly, and human-like.
+For Technical Questions (pandas, programming, etc.):
+- Use ONLY the Knowledge section below
+- Quote or paraphrase directly from the documentation
+- Include code examples from the Knowledge if available
+- If the Knowledge doesn't contain the answer, say: "I don't have information about that in the documentation."
 
-General Rules:
-- Always use clear, structured, and professional language when in Knowledge or Code Mode.
-- For lists, use bullet points or tables for clarity.
-- Use the Conversation History only for context, prioritizing the most recent messages.
+For Greetings (hi, hello, thanks):
+- Reply briefly and politely (e.g., "Hello! How can I help you with the documentation?")
+- Don't use the Knowledge section for greetings
 
-The Question: {message}
+For Code Generation Requests:
+- Base examples on patterns shown in the Knowledge section
+- Always use ```python code blocks
+- Ensure consistency with documentation examples
+
+---
+
+Question: {message}
 
 Conversation History: {history}
 
-Knowledge: {knowledge}
+Knowledge:
+{knowledge}
 """
 
 
@@ -124,7 +137,8 @@ Improved query:"""
     try:
         # Use a lightweight model call for fast query improvement
         response = llm.invoke(QUERY_IMPROVEMENT_PROMPT)
-        improved_query = response.content.strip()
+        # Ollama returns string directly, not an object with .content
+        improved_query = response.strip() if isinstance(response, str) else str(response).strip()
 
         # Fallback to original if improvement is too long or empty
         if not improved_query or len(improved_query) > len(query) * 3:
@@ -219,6 +233,10 @@ async def hybrid_search(query: str, db: AsyncSession):
     # Return combined results sorted by score
     combined_results = sorted(unique_docs.values(), key=lambda x: x[1], reverse=True)
 
+    print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5")
+    print(combined_results)
+
+    print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5")
     return combined_results
 
 @app.post("/ai")
@@ -242,8 +260,10 @@ async def ai(query: Query, db: AsyncSession = Depends(get_session)):
         full_response = ""
         try:
             for chunk in chain.stream(prompt):
-                full_response += chunk.content
-                yield chunk.content
+                # Ollama returns string chunks directly
+                chunk_text = chunk if isinstance(chunk, str) else str(chunk)
+                full_response += chunk_text
+                yield chunk_text
 
             chat_entry = ChatHistory(session_id=query.sessionId, prompt=query.query, response=full_response)
             db.add(chat_entry)

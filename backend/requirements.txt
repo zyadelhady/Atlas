@@ -1,11 +1,11 @@
 fastapi
 uvicorn
-langchain-google-genai
 python-dotenv
 langchain
-google-generativeai
 SQLAlchemy
 langchain-postgres
 psycopg[binary,pool]==3.2.9
 unstructured
-langchain_community
+langchain-community
+python-magic
+nltk
